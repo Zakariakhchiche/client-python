@@ -129,6 +129,9 @@ def _get_function_parameters(
                     annotation = param_annotations[p.name]
 
         description = param_descriptions[p.name] or None
+        # A signature default such as `x: Annotated[int, Field(ge=0)] = 1` is not
+        # stored on the FieldInfo extracted from Annotated: keep it explicitly.
+        signature_default = ... if isinstance(default, FieldInfo) else default
 
         if field_info is None:
             if default is ...:
@@ -143,8 +146,15 @@ def _get_function_parameters(
             raw_default = field_info.default
             if raw_default is not _PYDANTIC_UNDEFINED:
                 fields[p.name] = (typed, raw_default)
+            elif field_info.is_required():
+                fields[p.name] = (typed, signature_default)
             else:
                 fields[p.name] = (typed, ...)
+        elif field_info.is_required() and signature_default is not ...:
+            fields[p.name] = (
+                Annotated[cast(type, annotation), field_info],  # type: ignore[valid-type]
+                signature_default,
+            )
         else:
             fields[p.name] = (cast(type, annotation), field_info)
 
