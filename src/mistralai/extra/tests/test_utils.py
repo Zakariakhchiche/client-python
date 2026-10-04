@@ -221,6 +221,20 @@ class TestResponseFormat(unittest.TestCase):
         self.assertEqual(result.get("type"), "json_schema")
         self.assertIsNotNone(result.get("json_schema"))
 
+    def test_rec_strict_json_schema_keeps_dict_value_schema(self):
+        """dict[str, T] fields must keep their additionalProperties value schema,
+        otherwise the strict schema forbids every key of the dict."""
+
+        class Inventory(BaseModel):
+            stock: dict[str, int]
+
+        schema = rec_strict_json_schema(Inventory.model_json_schema())
+
+        self.assertEqual(schema["additionalProperties"], False)
+        self.assertEqual(
+            schema["properties"]["stock"]["additionalProperties"], {"type": "integer"}
+        )
+
     def test_rec_strict_json_schema_with_invalid_type(self):
         """Test that rec_strict_json_schema raises ValueError for truly invalid types."""
         # A custom object that is not a valid JSON schema node type
