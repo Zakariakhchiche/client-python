@@ -153,6 +153,38 @@ class TestCreateToolCallDescriptions(unittest.TestCase):
         self.assertEqual(props["limit"]["default"], 10)
         self.assertEqual(props["limit"]["minimum"], 1)
 
+    # -- Annotated Field + signature default -----------------------------------
+
+    def test_annotated_field_signature_default_with_docstring(self):
+        def search(query: str, limit: Annotated[int, Field(ge=1)] = 10) -> str:
+            """Search.
+
+            Args:
+                query: The query.
+                limit: Max results.
+            """
+            return ""
+
+        params = create_tool_call(search).function.parameters
+        self.assertEqual(params["required"], ["query"])
+        self.assertEqual(params["properties"]["limit"]["default"], 10)
+        self.assertEqual(params["properties"]["limit"]["minimum"], 1)
+        self.assertEqual(params["properties"]["limit"]["description"], "Max results.")
+
+    def test_annotated_field_signature_default_without_docstring_entry(self):
+        def search(
+            query: str,
+            limit: Annotated[int, Field(ge=1, description="Max results.")] = 10,
+        ) -> str:
+            """Search."""
+            return ""
+
+        params = create_tool_call(search).function.parameters
+        self.assertEqual(params["required"], ["query"])
+        self.assertEqual(params["properties"]["limit"]["default"], 10)
+        self.assertEqual(params["properties"]["limit"]["minimum"], 1)
+        self.assertEqual(params["properties"]["limit"]["description"], "Max results.")
+
     # -- Edge cases ------------------------------------------------------------
 
     def test_undocumented_param_has_no_description_key(self):
